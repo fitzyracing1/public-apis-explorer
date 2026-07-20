@@ -1,76 +1,71 @@
 #!/usr/bin/env python3
 """
-public-apis-explorer.py
-A simple CLI tool to explore the public-apis list locally.
+public-apis-explorer.py (Offline Version)
+A fast, offline CLI tool to explore popular public APIs.
 
-Self-delivered by the persistent-self-coder skill after analyzing trending repositories.
+This version includes a bundled dataset so it works without internet.
+Self-delivered and improved by the persistent-self-coder skill.
 """
 
-import json
 import sys
-import urllib.request
-from pathlib import Path
 from typing import List, Dict
 
-API_LIST_URL = "https://raw.githubusercontent.com/public-apis/public-apis/master/README.md"
-CACHE_FILE = Path.home() / ".cache" / "public-apis.json"
+# Bundled popular APIs dataset (curated sample - easily extendable)
+APIS = [
+    {"name": "OpenWeatherMap", "description": "Weather data and forecasts", "auth": "apiKey", "https": "Yes", "cors": "Yes", "category": "Weather"},
+    {"name": "WeatherAPI", "description": "Real-time weather information", "auth": "apiKey", "https": "Yes", "cors": "Yes", "category": "Weather"},
+    {"name": "Google Maps", "description": "Maps, geocoding, directions", "auth": "apiKey", "https": "Yes", "cors": "Yes", "category": "Maps"},
+    {"name": "GitHub API", "description": "Access GitHub repositories and user data", "auth": "OAuth", "https": "Yes", "cors": "Yes", "category": "Development"},
+    {"name": "Spotify", "description": "Music streaming and metadata", "auth": "OAuth", "https": "Yes", "cors": "Yes", "category": "Music"},
+    {"name": "YouTube Data", "description": "Search and manage YouTube videos", "auth": "OAuth", "https": "Yes", "cors": "Yes", "category": "Video"},
+    {"name": "Twitter API v2", "description": "Access Twitter data and post tweets", "auth": "OAuth", "https": "Yes", "cors": "Yes", "category": "Social"},
+    {"name": "Stripe", "description": "Payment processing", "auth": "apiKey", "https": "Yes", "cors": "Yes", "category": "Finance"},
+    {"name": "CoinGecko", "description": "Cryptocurrency data and market info", "auth": "No", "https": "Yes", "cors": "Yes", "category": "Finance"},
+    {"name": "NASA APOD", "description": "Astronomy Picture of the Day", "auth": "apiKey", "https": "Yes", "cors": "Yes", "category": "Science"},
+    {"name": "JokeAPI", "description": "Random jokes", "auth": "No", "https": "Yes", "cors": "Yes", "category": "Entertainment"},
+    {"name": "REST Countries", "description": "Country information", "auth": "No", "https": "Yes", "cors": "Yes", "category": "Data"},
+    {"name": "JSONPlaceholder", "description": "Fake REST API for testing", "auth": "No", "https": "Yes", "cors": "Yes", "category": "Development"},
+    {"name": "Dog CEO", "description": "Random dog images", "auth": "No", "https": "Yes", "cors": "Yes", "category": "Animals"},
+    {"name": "Cat Facts", "description": "Daily cat facts", "auth": "No", "https": "Yes", "cors": "Yes", "category": "Animals"},
+]
 
 
-def fetch_apis() -> List[Dict]:
-    """Fetch and parse the public APIs list (simple parser for the README table)."""
-    print("Fetching latest public APIs list...")
-    try:
-        with urllib.request.urlopen(API_LIST_URL, timeout=15) as response:
-            content = response.read().decode("utf-8")
-    except Exception as e:
-        print(f"Error fetching APIs: {e}")
-        return []
-
-    apis = []
-    in_table = False
-    for line in content.splitlines():
-        if "| API | Description | Auth | HTTPS | CORS |" in line:
-            in_table = True
-            continue
-        if in_table and line.startswith("|") and not line.startswith("|---"):
-            parts = [p.strip() for p in line.split("|")[1:-1]]
-            if len(parts) >= 5:
-                apis.append({
-                    "name": parts[0].replace("**", "").strip(),
-                    "description": parts[1].strip(),
-                    "auth": parts[2].strip(),
-                    "https": parts[3].strip(),
-                    "cors": parts[4].strip()
-                })
-    return apis
-
-
-def search_apis(apis: List[Dict], query: str) -> List[Dict]:
-    """Simple search across name and description."""
+def search_apis(query: str, category: str = None) -> List[Dict]:
+    """Search APIs by name, description or category."""
     query = query.lower()
-    return [api for api in apis if query in api["name"].lower() or query in api["description"].lower()]
+    results = []
+    for api in APIS:
+        match = (
+            query in api["name"].lower() or
+            query in api["description"].lower() or
+            (category and category.lower() in api.get("category", "").lower())
+        )
+        if match:
+            results.append(api)
+    return results
 
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python public-apis-explorer.py <search-term>")
-        print("Example: python public-apis-explorer.py weather")
-        sys.exit(1)
+        print("public-apis-explorer (Offline)")
+        print("Usage: python public-apis-explorer.py <search-term> [category]")
+        print("\nExamples:")
+        print("  python public-apis-explorer.py weather")
+        print("  python public-apis-explorer.py crypto")
+        print("  python public-apis-explorer.py maps")
+        sys.exit(0)
 
-    query = " ".join(sys.argv[1:])
-    apis = fetch_apis()
+    query = sys.argv[1]
+    category = sys.argv[2] if len(sys.argv) > 2 else None
 
-    if not apis:
-        print("Could not load API list.")
-        sys.exit(1)
+    results = search_apis(query, category)
 
-    results = search_apis(apis, query)
+    print(f"\n\ud83d\udd0d Found {len(results)} APIs matching '{query}'" + (f" in category '{category}'" if category else "") + ":\n")
 
-    print(f"\nFound {len(results)} APIs matching '{query}':\n")
-    for api in results[:15]:  # Limit output
+    for api in results[:20]:
         print(f"• {api['name']}")
         print(f"  {api['description']}")
-        print(f"  Auth: {api['auth']} | HTTPS: {api['https']} | CORS: {api['cors']}\n")
+        print(f"  Category: {api.get('category', 'N/A')} | Auth: {api['auth']} | HTTPS: {api['https']} | CORS: {api['cors']}\n")
 
 
 if __name__ == "__main__":
